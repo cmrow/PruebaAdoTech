@@ -10,5 +10,6 @@ namespace PruebaAdoTech.Data
 
         }
         public DbSet<Cliente> Cliente { get; set; }
+        public DbSet<Usuario> Usuario { get; set; }
     }
 }
