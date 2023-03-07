@@ -2,6 +2,9 @@
 using Microsoft.IdentityModel.Tokens;
 using PruebaAdoTech.Data;
 using PruebaAdoTech.Modelos;
+using PruebaAdoTech.Repositorio;
+using PruebaAdoTech.Repositorio.IRepositorio;
+using XAct;
 
 namespace PruebaAdoTech.Controllers
 {
@@ -9,8 +12,8 @@ namespace PruebaAdoTech.Controllers
     [ApiController]
     public class ClienteController : ControllerBase
     {
-        private readonly ApplicationDbContext _db;
-        public ClienteController(ApplicationDbContext db)
+        private readonly IRepository<Cliente> _db;
+        public ClienteController(IRepository<Cliente> db)
         {
             _db = db;
         }
@@ -20,13 +23,11 @@ namespace PruebaAdoTech.Controllers
         [ProducesResponseType(404)]
         public IActionResult GetClientes()
         {
-            IEnumerable<Cliente> lista = _db.Cliente;
-            return Ok(lista);
-
+            IEnumerable<Cliente> list = _db.Get();
+            return Ok(list);
         }
 
         [HttpGet("{idCliente:int}", Name = "GetCliente")]
-        [ProducesResponseType(typeof(IEnumerable<string>), 200)]
         [ProducesResponseType(404)]
         public IActionResult GetCliente(int? idCliente)
         {
@@ -34,14 +35,13 @@ namespace PruebaAdoTech.Controllers
             {
                 return NotFound();
             }
-            var obj = _db.Cliente.Find(idCliente);
+            var obj = _db.Get((int)idCliente);
             if (obj == null)
             {
                 return NotFound();
 
             }
             return Ok(obj);
-
         }
 
         [HttpPost]
@@ -49,57 +49,52 @@ namespace PruebaAdoTech.Controllers
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public IActionResult CrearCliente([FromBody] Cliente cliente)
+        public IActionResult CreateCliente([FromBody] Cliente cliente)
         {
+
             if (!ModelState.IsValid) { return BadRequest(ModelState); }
-                var clienteExistente = _db.Cliente.Where(c => c.NumeroIdentificacion == cliente.NumeroIdentificacion);
-            if (clienteExistente.Any())
+            IEnumerable<Cliente> list = _db.Get();
+            if (list != null)
             {
-                ModelState.AddModelError("", "Ya existe el registro");
-                return StatusCode(404, ModelState);
+                var clienteExistente = list.Where(b => b.NumeroIdentificacion == cliente.NumeroIdentificacion)
+                        .FirstOrDefault();
+                if (clienteExistente != null)
+                {
+                    ModelState.AddModelError("", "Ya existe el registro");
+                    return StatusCode(404, ModelState);
+                }
             }
-            _db.Cliente.Add(cliente);
-            _db.SaveChanges();
+            _db.Add(cliente);
+            _db.Save();
             return Ok(cliente);
-
         }
-
         [HttpPatch("{idCliente:int}", Name = "ActualizarCliente")]
         [ProducesResponseType(typeof(Cliente), 201)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public IActionResult ActualizarCliente(int? idCliente, [FromBody] Cliente cliente)
         {
-            if (!ModelState.IsValid) { return BadRequest(ModelState); }
-
-            var clienteExistente = _db.Cliente.Find(idCliente);
-
-            if (clienteExistente != null)
+            if (!ModelState.IsValid || idCliente == null) return BadRequest(ModelState);
+            var clienteUpdate = _db.Get(Convert.ToInt32(idCliente));
+            if (clienteUpdate == null)
             {
-                clienteExistente.NumeroIdentificacion = cliente.NumeroIdentificacion;
-                clienteExistente.Nombres = cliente.Nombres;
-                clienteExistente.Apellidos = cliente.Apellidos;
-                clienteExistente.Genero = cliente.Genero;
-
-                _db.Cliente.Update(clienteExistente);
-                _db.SaveChanges();
-
-                return Ok(clienteExistente);
-
+                ModelState.AddModelError("", "Cliente no registrado");
+                return BadRequest(ModelState);
             }
+            clienteUpdate.NumeroIdentificacion = cliente.NumeroIdentificacion;
+            clienteUpdate.Nombres = cliente.Nombres;
+            clienteUpdate.Apellidos = cliente.Apellidos;
+            clienteUpdate.Genero = cliente.Genero;
+            _db.Update(clienteUpdate);
+            _db.Save();
             return NoContent();
 
-
         }
-
-
         [HttpDelete("{idCliente:int}", Name = "ActualizarCliente")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-
-
         public IActionResult BorrarCliente(int? idCliente)
         {
 
@@ -107,23 +102,17 @@ namespace PruebaAdoTech.Controllers
             {
                 return NotFound();
             }
-            var clienteExistente = _db.Cliente.Find(idCliente);
+            var clienteExistente = _db.Get((int)idCliente);
             if (clienteExistente == null)
             {
                 return NotFound();
             }
-            _db.Cliente.Remove(clienteExistente);
-            _db.SaveChanges();
+            _db.Delete((int)idCliente);
+            _db.Save();
 
             return NoContent();
 
 
         }
-
-
-
-
-
-
     }
-}
+} 
