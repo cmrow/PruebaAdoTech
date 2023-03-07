@@ -108,7 +108,7 @@ namespace PruebaAdoTech.Controllers
                 return NotFound();
             }
             _db.Delete((int)idCliente);
-            _db.Save();
+            _db.Save();     
 
             return NoContent();
 
